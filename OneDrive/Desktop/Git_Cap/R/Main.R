@@ -1,30 +1,55 @@
+#Clears Environment
+
 rm(list=ls())
+
+###############
+###############
+##Global Variables
+###############
+###############
+
+  #Can be single number or x:y
+    horizon=2:18
+
+  ##Mainly for testing, this allows you to only use the first 20 series in the object for simplicity
+  ##Presently if you want to use the whole series, you will have to change this to 1:1428
+  ##Note: for horizon and which_series, this only affects
+    which_series=1:1428
+
+  #####
+  ##name of file to save, folder name for model
+  ##Folder can be 'ARIMA_Forecasts','HW_Forecasts, or 'MLP_Forecasts' at the moment
+  ##Naming convention: <Model>_<Trend_Remover>_<Seasonality_Remover>_forecast<horizons>
+
+    name='ARIMA_CochraneOrc_forecast_1428'
+    folder = 'ARIMA_Forecasts'
+
+###############
+###############
+##Run your things
+###############
+###############
+
 source('Functions.R')
-
-json_file<-readRDS("C:\\Users\\tavin\\OneDrive\\Desktop\\json_holder.RData")
-
-##Read in monthly, quarterly, yearly, or other data
-json_file<-read_data(which_data='monthly')
-##Turns series into numeric values
-json_file<-to_numeric(json_file)
-## Sets meta data about series
-json_file<-series_features(json_file)
+source('Preprocess.R')
+source('Cochrane_Orcutt.R')
+source('ARIMA.R')
+source('sMAPE.R')
+##write sMAPES to file
+write_sMAPES(my_sMAPES,folder,name)
 
 
-## Get Cochrane orcutt trend results
-json_file<-cochrane_orcutt_eval(json_file)
+##sMAPE values are saved to disk and also in the object my_sMAPES
+###############
+###############
+##Summary
+###############
+###############
 
+##summary
 
-##Remove Trend
-json_file<-remove_trend_differencing(json_file)
+##Prints one horizon at a time + a histogram
+sMAPE_summary(my_sMAPES,h=10)
 
-##Get Phis and Thetas for ARIMA (currently uses top AIC for p and q)
-json_file<-get_Phi_Thetas_aic(json_file)
-
-##Forecast
-
-ARIMA_Forecasts<-lapply(2:3,function(x) forecast_arima(json_file[1:20],horizon=x))
-
-##Write forecasts to folder as RDS file.
-
-write_forecasts(ARIMA_Forecasts,folder = 'ARIMA_Forecasts',name='ARIMA_CochraneOrc_forecast1')
+#Prints mean, median, min and max of all horizons at once
+summary_all_horizons(my_sMAPES)

@@ -3,6 +3,8 @@ json_file<-get_Phi_Thetas_aic(json_file)
 
 ##Forecast
 
-ARIMA_Forecasts<-lapply(2:3,function(x) forecast_arima(json_file[1:20],horizon=x))
+ARIMA_Forecasts<-lapply(horizon,function(x) forecast_arima(json_file[which_series],horizon=x))
 
 ##Write forecasts to folder as json
+
+write_forecasts(ARIMA_Forecasts,folder = folder,name=name)

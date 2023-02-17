@@ -13,10 +13,10 @@ read_data<-function(which_data='monthly'){
   ##change which_data for different m3 series
   json_file = switch(
     which_data,
-    "monthly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone_/main/M3_Json/monthly.json"), fromJSON),
-    "yearly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone_/main/M3_Json/yearly.json"), fromJSON),
-    "quarterly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone_/main/M3_Json/quarterly.json"), fromJSON),
-    "other"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone_/main/M3_Json/other.json"), fromJSON),
+    "monthly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone/main/OneDrive/Desktop/Git_Cap/M3_Json/monthly.json"), fromJSON),
+    "yearly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone/main/OneDrive/Desktop/Git_Cap/M3_Json/yearly.json"), fromJSON),
+    "quarterly"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone/main/OneDrive/Desktop/Git_Cap/M3_Json/quarterly.json"), fromJSON),
+    "other"= lapply(readLines("https://raw.githubusercontent.com/tavinweeda/Capstone/main/OneDrive/Desktop/Git_Cap/M3_Json/other.json"), fromJSON),
   )
 
   return(json_file)
@@ -184,19 +184,23 @@ get_Phi_Thetas_aic<-function(json_file){
 forecast_arima<-function(json_file,horizon=0){
 
 
-  ##this just returns forecasts and the horizon...we can always add more if we think it is necessary
-  fore_holder<-invisible(lapply(json_file,function(x){ fores<-(fore.aruma.wge(x$target,phi=x$series_features$phi,
-                                                                              theta=x$series_features$theta,
-                                                                              d=x$series_features$d,
-                                                                              s=x$series_features$s,
-                                                                              n.ahead=horizon,
-                                                                              lastn=TRUE,
-                                                                              plot = FALSE))
+  ##this just returns forecasts horizon and series features.
+  fore_holder<-invisible(lapply(json_file,function(x){
+                                                          fores<-(fore.aruma.wge(x$target,phi=x$series_features$phi,
+                                                          theta=x$series_features$theta,
+                                                          d=x$series_features$d,
+                                                          s=x$series_features$s,
+                                                          n.ahead=horizon,
+                                                          lastn=TRUE,
+                                                          plot = FALSE))
 
-  return(list('forecasts'=fores$f,'horizon'=horizon,'phi'=x$series_features$phi,'theta'=x$series_features$theta,
-              'd'=x$series_features$d,
-              's'=x$series_features$s,
-              'original_length'=x$series_features$series_length))}
+                                                          return(list('forecasts'=fores$f,
+                                                                    'horizon'=horizon,
+                                                                    'phi'=x$series_features$phi,
+                                                                    'theta'=x$series_features$theta,
+                                                                    'd'=x$series_features$d,
+                                                                    's'=x$series_features$s,
+                                                                    'original_length'=x$series_features$series_length))}
   ))
 
 
@@ -207,8 +211,89 @@ forecast_arima<-function(json_file,horizon=0){
 
 #######################################################################################-
 
+
 write_forecasts<-function(forecasts,name,folder){
 
   saveRDS(forecasts, file=paste0(folder,'/',name,".RData"))
+
+}
+
+
+
+#######################################################################################-
+
+sMAPE_calculate<-function(json_file,forecast_object){
+  #sMAPE_holder<-c()
+
+  ##Gets forecasts and originals for horizon passed.
+      my_sMAPES<-lapply(horizon,function(h) {
+
+      targets<-lapply(which_series,function(x) {
+                        l<-length(json_file[[x]]$target)
+                        json_file[[x]]$target[(l+1-h):l]
+                        })
+      fores<-lapply(forecast_object[[h-1]],function(x) x$forecasts)
+
+      ##indexes into targets and fores
+      sMAPE<-sapply(1:length(targets),function(ind) (2/(h+1))*sum((abs(targets[[ind]]-fores[[ind]])/(abs(targets[[ind]])+abs(fores[[ind]])))*100))
+      return(sMAPE)
+
+      fores<-lapply(forecast_object[[h-1]],function(x) x$forecasts)
+
+      lapply(forecast_object[[h-1]],function(x) lapply(1:which_series,function(ind) x[[ind]]$sMAPE==sMAPE[ind]))
+      })
+
+     return(my_sMAPES)
+}
+
+
+
+#######################################################################################-
+
+
+
+
+read_forecasts<-function(folder,name){
+
+
+  read_in<-readRDS(paste0(folder,'/',name,".RData"))
+
+  return(read_in)
+
+}
+
+
+#######################################################################################-
+
+
+write_sMAPES<-function(sMAPES,folder,name){
+
+  saveRDS(sMAPES, file=paste0(folder,'/',name,"_sMAPES_.RData"))
+}
+
+
+
+#######################################################################################-
+
+##This is for individual horizons
+sMAPE_summary<-function(sMAPES,h){
+
+  print(summary(sMAPES[[h-1]]))
+  hist(sMAPES[[h-1]],main=paste('Horizon',h),xlab='sMAPE')
+  ?hist
+
+}
+
+
+#######################################################################################-
+
+summary_all_horizons<-function(sMAPES){
+
+  mins<-sapply(my_sMAPES,function(x) min(x))
+  means<-sapply(my_sMAPES,function(x) mean(x))
+  medians<-sapply(my_sMAPES,function(x) median(x))
+  maxes<-sapply(my_sMAPES,function(x) max(x))
+  df<-data.frame('Horizon'=horizon,'Min'=mins,'Median'=medians,'Mean'=means,'Max'=maxes)
+  print(df)
 
 }
